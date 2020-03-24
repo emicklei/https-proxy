@@ -4,3 +4,6 @@ This little program can do TLS termination for HTTPS traffic and forwards reques
 
     go run https-proxy.go -v -front :443 -back :8080 -cert domain.com-chain.pem -key domain.com-key.pem
 
+## non-TLS usage
+
+    go run https-proxy.go -v -front :443 -back :8080 -stripprefix /hello

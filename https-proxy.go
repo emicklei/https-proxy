@@ -35,8 +35,9 @@ import (
 var (
 	oFrontAddress   = flag.String("front", ":443", "listening address")
 	oBackAddress    = flag.String("back", "localhost:8080", "forwarding to backend address")
-	oSSLCertificate = flag.String("cert", "cert.pem", "SSL certificate location")
-	oSSLKey         = flag.String("key", "key.pem", "SSL key location")
+	oSSLCertificate = flag.String("cert", "", "(cert.pem) SSL certificate location")
+	oSSLKey         = flag.String("key", "", "(key.pem) SSL key location")
+	oStripPrefix    = flag.String("stripprefix", "", "path element to strip from the HTTP request")
 	oVerbose        = flag.Bool("v", false, "verbose logging")
 )
 
@@ -51,8 +52,18 @@ func main() {
 		director(req)
 		req.Host = req.URL.Host
 	}
+	handler := xforwarder(proxy)
+	if len(*oStripPrefix) > 0 {
+		log.Println("install prefix handler", *oStripPrefix)
+		handler = http.StripPrefix(*oStripPrefix, handler)
+	}
 	log.Println("listening on", *oFrontAddress)
-	log.Fatalln(http.ListenAndServeTLS(*oFrontAddress, *oSSLCertificate, *oSSLKey, xforwarder(proxy)))
+	if len(*oSSLCertificate) > 0 {
+		log.Println("accepting HTTPS traffic")
+		log.Fatalln(http.ListenAndServeTLS(*oFrontAddress, *oSSLCertificate, *oSSLKey, handler))
+	}
+	log.Println("accepting non-TLS HTTP traffic")
+	log.Fatalln(http.ListenAndServe(*oFrontAddress, handler))
 }
 
 func xforwarder(handler http.Handler) http.Handler {
